@@ -99,16 +99,6 @@ function UploadCard({
                   </ul>
                 </div>
               )}
-
-              <div className="mt-3 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
-                <span className="text-xs text-[var(--color-text-secondary)] font-medium">Ready to find revenue opportunities?</span>
-                <Link
-                  to="/agent"
-                  className="inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] text-[#1a1200] px-3.5 py-2 text-xs font-bold shadow hover:opacity-90 transition-opacity"
-                >
-                  <Bot size={16} /> Get Analysis with AI Agent &rarr;
-                </Link>
-              </div>
             </div>
           )}
         </div>
@@ -122,6 +112,8 @@ export function DataUploadPage() {
   const { data: schema } = useUploadSchema();
   const uploadCustomers = useUploadCustomers(merchant?.id);
   const uploadOrders = useUploadOrders(merchant?.id);
+
+  const bothUploaded = Boolean(uploadCustomers.data && uploadOrders.data);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -169,6 +161,21 @@ export function DataUploadPage() {
         error={uploadOrders.error}
         result={uploadOrders.data}
       />
+
+      {bothUploaded && (
+        <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-surface)] p-5 shadow-lg flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-sm text-[var(--color-text-primary)]">Data Import Complete!</h3>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-1">Both Customer and Order datasets have been successfully imported and analytics recomputed.</p>
+          </div>
+          <Link
+            to="/agent"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] text-[#1a1200] px-4 py-2 text-xs font-bold shadow hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Bot size={18} /> Get Analysis with AI Agent &rarr;
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
