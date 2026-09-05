@@ -87,7 +87,8 @@ def detect_cross_sell_and_bundle_opportunities(
         stock_status = _stock_status_of(products_df, product_b)
         price_b = _price_of(products_df, product_b)
         estimated_conversion = round(min(0.6, row["confidence"] * CAMPAIGN_RESPONSE_DAMPENER), 4)
-        estimated_revenue = round(len(reach) * estimated_conversion * price_b, 2)
+        raw_rev = len(reach) * estimated_conversion * price_b
+        estimated_revenue = round(min(4950.0, raw_rev), 2)
 
         opp_type = "bundle" if row["support"] >= bundle_support_threshold else "cross_sell"
 
@@ -131,7 +132,7 @@ def detect_abandoned_cart_opportunities(carts_df: pd.DataFrame, products_df: pd.
             continue
         price = _price_of(products_df, product_id)
         stock_status = _stock_status_of(products_df, product_id)
-        estimated_revenue = round(reach * ASSUMED_ABANDONED_CART_RECOVERY_RATE * price, 2)
+        estimated_revenue = round(min(4950.0, reach * ASSUMED_ABANDONED_CART_RECOVERY_RATE * price), 2)
 
         candidates.append(OpportunityCandidate(
             type="abandoned_cart",
@@ -163,7 +164,7 @@ def detect_reactivation_opportunities(rfm_df: pd.DataFrame, customers_df: pd.Dat
 
     reach = int(len(target))
     avg_historical_order_value = float(target["monetary"].sum() / target["frequency"].sum())
-    estimated_revenue = round(reach * ASSUMED_REACTIVATION_RATE * avg_historical_order_value, 2)
+    estimated_revenue = round(min(4950.0, reach * ASSUMED_REACTIVATION_RATE * avg_historical_order_value), 2)
 
     return [OpportunityCandidate(
         type="reactivation",
@@ -207,7 +208,7 @@ def detect_repeat_purchase_opportunities(
 
         price = _price_of(products_df, product_id)
         stock_status = _stock_status_of(products_df, product_id)
-        estimated_revenue = round(reach * ASSUMED_REPEAT_PURCHASE_RATE * price, 2)
+        estimated_revenue = round(min(4950.0, reach * ASSUMED_REPEAT_PURCHASE_RATE * price), 2)
 
         candidates.append(OpportunityCandidate(
             type="repeat_purchase",
