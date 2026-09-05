@@ -1,13 +1,14 @@
-import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { NavLink, Link } from "react-router-dom";
 import { SystemStatusBadge } from "../components/SystemStatusBadge";
 import { useMerchant } from "../app/MerchantContext";
-import { useCurrentUser, useLogout, getStoredToken } from "../services/auth";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
+import { Bell, CheckCircle2, ShieldAlert, X } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: "/" },
   { label: "Mission Workflow", to: "/mission" },
-  { label: "Notifications", to: "/notifications" },
   { label: "Opportunities", to: "/opportunities" },
   { label: "Campaigns", to: "/campaigns" },
   { label: "Shop with AI", to: "/shop" },
@@ -22,9 +23,31 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { merchant } = useMerchant();
-  const hasToken = Boolean(getStoredToken());
-  const { data: user } = useCurrentUser();
-  const logout = useLogout();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch recent notifications via audit ledger
+  const { data: auditData } = useQuery({
+    queryKey: ["header-notifications", merchant?.id],
+    queryFn: () => apiFetch<{ items: any[] }>(`/api/v1/audit?merchant_id=${merchant?.id}&page_size=10`),
+    enabled: Boolean(merchant?.id),
+    refetchInterval: 5000,
+  });
+
+  const notifications = (auditData?.items || []).filter((item: any) =>
+    ["CREATE_CAMPAIGN_DRAFT", "CREATE_DISCOUNT", "CREATE_PAYMENT_LINK"].includes(item.action)
+  );
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)]">
@@ -37,26 +60,86 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           {merchant && <span className="text-sm text-[var(--color-text-secondary)]">{merchant.name}</span>}
         </div>
-        <div className="flex items-center gap-3">
-          {hasToken && user ? (
-            <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-              <span>{user.email}</span>
-              <button
-                type="button"
-                onClick={logout}
-                className="rounded-md border border-[var(--color-border)] px-2 py-1 text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <NavLink
-              to="/login"
-              className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]"
+        <div className="flex items-center gap-4">
+          {/* Notification Bell Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative rounded-full p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)] transition-colors"
+              aria-label="Notifications"
             >
-              Sign in
-            </NavLink>
-          )}
+              <Bell size={20} />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent)] text-[10px] font-bold text-[#1a1200]">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-xl z-50">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <Bell size={16} className="text-[var(--color-accent)]" />
+                    <span>Notifications & Alerts</span>
+                  </div>
+                  <button
+                    onClick={() => setShowNotifications(false)}
+                    className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-3 max-h-80 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="py-6 text-center text-xs text-[var(--color-text-secondary)]">
+                      No new notifications.
+                    </p>
+                  ) : (
+                    notifications.map((n: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-xs"
+                      >
+                        <div className="mt-0.5 shrink-0">
+                          {n.result === "success" ? (
+                            <CheckCircle2 size={16} className="text-green-500" />
+                          ) : (
+                            <ShieldAlert size={16} className="text-[var(--color-warning)]" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-[var(--color-text-primary)]">
+                            {n.action === "CREATE_CAMPAIGN_DRAFT" && "Campaign Drafted"}
+                            {n.action === "CREATE_DISCOUNT" && "Approval Required"}
+                            {n.action === "CREATE_PAYMENT_LINK" && "Payment Link Generated"}
+                          </p>
+                          <p className="mt-0.5 text-[var(--color-text-secondary)]">
+                            {n.input_summary} — {n.reason}
+                          </p>
+                          <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--color-text-secondary)]">
+                            <span>{new Date(n.timestamp).toLocaleTimeString()}</span>
+                            {n.action === "CREATE_DISCOUNT" && n.result === "pending_approval" && (
+                              <Link
+                                to="/approvals"
+                                onClick={() => setShowNotifications(false)}
+                                className="font-bold text-[var(--color-accent)] hover:underline"
+                              >
+                                Review Request &rarr;
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <SystemStatusBadge />
         </div>
       </header>

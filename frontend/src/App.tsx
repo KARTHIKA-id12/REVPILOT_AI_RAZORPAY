@@ -21,7 +21,6 @@ import { ControlRoomPage } from "./pages/ControlRoomPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DataUploadPage } from "./pages/DataUploadPage";
 import { MissionPage } from "./pages/MissionPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -34,7 +33,6 @@ function App() {
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/mission" element={<MissionPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/opportunities" element={<OpportunitiesListPage />} />
               <Route path="/opportunities/:opportunityId" element={<OpportunityDetailPage />} />
               <Route path="/simulator/:opportunityId" element={<SimulatorPage />} />
