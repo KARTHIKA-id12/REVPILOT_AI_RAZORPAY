@@ -25,6 +25,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("revpilot_access_token");
+      window.location.reload();
+      throw new Error("Unauthorized");
+    }
     const body = await response.json().catch(() => null);
     const err = body?.error;
     throw new ApiError(
