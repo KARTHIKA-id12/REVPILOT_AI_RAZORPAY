@@ -37,6 +37,8 @@ from app.agents.read_tools import get_product_details, get_revenue_opportunities
 from app.agents.schemas import CreateCampaignDraftInput, RequestCampaignApprovalInput, SimulateCampaignInput
 from app.core.config import get_settings
 from app.models.agent import AgentMessage, AgentSession, AgentToolCall
+from app.models.catalog import Product
+from app.models.opportunities import RevenueOpportunity
 
 
 def create_session(db: Session, merchant_id: uuid.UUID, user_id: uuid.UUID | None, channel: str = "merchant_console") -> AgentSession:
@@ -188,20 +190,38 @@ def handle_message(db: Session, session: AgentSession, merchant_id: uuid.UUID, u
         return {"reply": reply, "intent": "ANALYZE_GOAL", "tool_result": opp_result}
 
     if name == "CREATE_CAMPAIGN_DRAFT":
-        opp_result = get_revenue_opportunities(db, merchant_id, limit=1)
-        if not opp_result.get("found"):
-            reply = "I don't have an opportunity to build a campaign from yet. Run an analysis first."
-            _log_message(db, session.id, "assistant", reply)
-            return {"reply": reply, "intent": "CREATE_CAMPAIGN_DRAFT", "tool_result": None}
+        import re
+        top = None
+        uuid_match = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", lowered)
+        if uuid_match:
+            spec_opp = db.query(RevenueOpportunity).filter(RevenueOpportunity.id == uuid.UUID(uuid_match.group(0)), RevenueOpportunity.merchant_id == merchant_id).one_or_none()
+            if spec_opp:
+                top = {
+                    "id": str(spec_opp.id), "type": spec_opp.type, "reach_count": spec_opp.reach_count,
+                    "estimated_revenue_amount": float(spec_opp.estimated_revenue_amount),
+                    "source_product_id": str(spec_opp.source_product_id) if spec_opp.source_product_id else None,
+                    "target_product_id": str(spec_opp.target_product_id) if spec_opp.target_product_id else None,
+                }
 
-        top = opp_result["opportunities"][0]
+        if not top:
+            opp_result = get_revenue_opportunities(db, merchant_id, limit=1)
+            if not opp_result.get("found"):
+                reply = "I don't have an opportunity to build a campaign from yet. Run an analysis first."
+                _log_message(db, session.id, "assistant", reply)
+                return {"reply": reply, "intent": "CREATE_CAMPAIGN_DRAFT", "tool_result": None}
+            top = opp_result["opportunities"][0]
+
         resolved_discount = discount if discount is not None else 10.0
         product_ids = [uuid.UUID(p) for p in [top["source_product_id"], top["target_product_id"]] if p]
+        if not product_ids:
+            first_product = db.query(Product).filter(Product.merchant_id == merchant_id).first()
+            if first_product:
+                product_ids = [first_product.id]
 
         try:
             draft_payload = CreateCampaignDraftInput(
                 opportunity_id=uuid.UUID(top["id"]), name=f"Auto campaign: {top['type']}", objective=top["type"],
-                product_ids=product_ids, discount_percent=resolved_discount, budget_amount=min(4500.0, top["estimated_revenue_amount"] * 0.1),
+                product_ids=product_ids, discount_percent=resolved_discount, budget_amount=min(4500.0, max(500.0, top["estimated_revenue_amount"] * 0.1)),
             )
         except ValidationError as e:
             reply = f"That request doesn't validate: {e.errors()[0]['msg']}."
