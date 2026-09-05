@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { UploadCloud, CheckCircle2, AlertTriangle, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
+import { UploadCloud, CheckCircle2, AlertTriangle, FileText, Bot } from "lucide-react";
 import { useMerchant } from "../app/MerchantContext";
 import { useUploadCustomers, useUploadOrders, useUploadSchema } from "../services/dataImport";
 import { ErrorState } from "../components/EmptyState";
@@ -98,6 +99,16 @@ function UploadCard({
                   </ul>
                 </div>
               )}
+
+              <div className="mt-3 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                <span className="text-xs text-[var(--color-text-secondary)] font-medium">Ready to find revenue opportunities?</span>
+                <Link
+                  to="/agent"
+                  className="inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] text-[#1a1200] px-3.5 py-2 text-xs font-bold shadow hover:opacity-90 transition-opacity"
+                >
+                  <Bot size={16} /> Get Analysis with AI Agent &rarr;
+                </Link>
+              </div>
             </div>
           )}
         </div>
