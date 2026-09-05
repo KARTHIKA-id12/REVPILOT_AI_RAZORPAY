@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { UploadCloud, CheckCircle2, AlertTriangle, FileText, Bot } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertTriangle, FileText, Bot, RotateCcw } from "lucide-react";
 import { useMerchant } from "../app/MerchantContext";
-import { useUploadCustomers, useUploadOrders, useUploadSchema } from "../services/dataImport";
+import { useUploadCustomers, useUploadOrders, useUploadSchema, useResetDefaultData } from "../services/dataImport";
 import { ErrorState } from "../components/EmptyState";
 import type { CustomersUploadResult, OrdersUploadResult } from "../services/dataImport";
 
@@ -112,6 +112,7 @@ export function DataUploadPage() {
   const { data: schema } = useUploadSchema();
   const uploadCustomers = useUploadCustomers(merchant?.id);
   const uploadOrders = useUploadOrders(merchant?.id);
+  const resetDefault = useResetDefaultData(merchant?.id);
 
   const bothUploaded = Boolean(uploadCustomers.data && uploadOrders.data);
 
@@ -120,15 +121,29 @@ export function DataUploadPage() {
       <div>
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">Manage Data</h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Upload your real customer and order history, or view the existing data.
+          Upload your real customer and order history, or view and reset to the default demo data.
         </p>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <a href="/customers" className="rounded border border-[var(--color-border)] px-3 py-1.5 text-xs hover:border-[var(--color-accent)]">View Customers</a>
           <a href="/products" className="rounded border border-[var(--color-border)] px-3 py-1.5 text-xs hover:border-[var(--color-accent)]">View Products</a>
           <a href="/technest_dataset.csv" download="technest_dataset.csv" className="rounded bg-[var(--color-accent)] text-[#1a1200] px-3 py-1.5 text-xs font-medium hover:opacity-90">
             Download TechNest Dataset
           </a>
+          <button
+            type="button"
+            onClick={() => resetDefault.mutate()}
+            disabled={resetDefault.isPending}
+            className="flex items-center gap-1.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 transition-colors"
+          >
+            <RotateCcw size={13} className={resetDefault.isPending ? "animate-spin text-[var(--color-accent)]" : ""} />
+            {resetDefault.isPending ? "Resetting…" : "Reset to Default TechNest Data"}
+          </button>
         </div>
+        {resetDefault.isSuccess && (
+          <p className="mt-2 text-xs text-green-500 font-medium flex items-center gap-1">
+            <CheckCircle2 size={13} /> Reset to default TechNest dataset completed!
+          </p>
+        )}
       </div>
 
       <div className="flex items-start gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs text-[var(--color-text-secondary)]">

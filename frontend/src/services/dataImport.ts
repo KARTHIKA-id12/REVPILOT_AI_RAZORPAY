@@ -56,3 +56,16 @@ export function useUploadOrders(merchantId: string | undefined) {
     },
   });
 }
+
+export function useResetDefaultData(merchantId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ status: string; message: string }>(`/api/v1/data/reset-default?merchant_id=${merchantId}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}

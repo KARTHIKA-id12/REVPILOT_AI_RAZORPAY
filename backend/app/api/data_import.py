@@ -66,3 +66,28 @@ async def upload_orders(
     ensure_merchant_access(db, merchant_id, principal, allowed_roles={"OWNER", "ADMIN"})
     raw = await _read_upload(file)
     return import_orders_csv(db, merchant_id, raw)
+
+
+@router.post("/reset-default")
+def reset_default_dataset(
+    merchant_id: uuid.UUID,
+    principal: Principal | None = Depends(get_principal),
+    db: Session = Depends(get_db),
+):
+    """Restores the merchant data back to the default TechNest benchmark seed dataset."""
+    ensure_merchant_access(db, merchant_id, principal, allowed_roles={"OWNER", "ADMIN"})
+    import sys
+    from pathlib import Path
+    root_path = str(Path(__file__).resolve().parents[3])
+    if root_path not in sys.path:
+        sys.path.insert(0, root_path)
+    from scripts.seed_demo import main as seed_main
+    from app.models.identity import Merchant
+    from app.opportunities.service import run_full_analytics
+
+    seed_main(reset=True)
+    m = db.query(Merchant).filter(Merchant.name == "TechNest").first()
+    if m:
+        run_full_analytics(db, m.id)
+
+    return {"status": "success", "message": "Successfully reset to default TechNest dataset."}
