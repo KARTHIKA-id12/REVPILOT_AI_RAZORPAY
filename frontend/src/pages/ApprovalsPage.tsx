@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMerchant } from "../app/MerchantContext";
 import { useApprovals, useDecideApproval } from "../services/approvals";
 import { EmptyState, ErrorState } from "../components/EmptyState";
@@ -19,6 +20,17 @@ function ApprovalCard({ approval }: { approval: ApprovalRequestItem }) {
               {approval.action_code.replace(/_/g, " ")}
             </span>
             <RiskBadge level={approval.risk_level} />
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wide ${
+                approval.status === "approved"
+                  ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                  : approval.status === "rejected"
+                  ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                  : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+              }`}
+            >
+              {approval.status}
+            </span>
           </div>
           <h3 className="mt-1.5 text-base font-medium">
             Discount campaign — {approval.payload.discount_percent}% off, budget {formatCurrency(approval.payload.budget_amount ?? 0)}
@@ -44,22 +56,28 @@ function ApprovalCard({ approval }: { approval: ApprovalRequestItem }) {
         <span className="text-xs text-[var(--color-text-secondary)]">
           Requested {approval.created_at ? new Date(approval.created_at).toLocaleString() : "—"}
         </span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => decide.mutate({ approvalId: approval.id, decision: "reject" })}
-            disabled={decide.isPending}
-            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)] disabled:opacity-50"
-          >
-            Reject
-          </button>
-          <button
-            onClick={() => decide.mutate({ approvalId: approval.id, decision: "approve" })}
-            disabled={decide.isPending}
-            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[#1a1200] disabled:opacity-50"
-          >
-            {decide.isPending ? "Processing…" : "Approve"}
-          </button>
-        </div>
+        {approval.status === "pending" ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => decide.mutate({ approvalId: approval.id, decision: "reject" })}
+              disabled={decide.isPending}
+              className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)] disabled:opacity-50"
+            >
+              Reject
+            </button>
+            <button
+              onClick={() => decide.mutate({ approvalId: approval.id, decision: "approve" })}
+              disabled={decide.isPending}
+              className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[#1a1200] disabled:opacity-50"
+            >
+              {decide.isPending ? "Processing…" : "Approve"}
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-[var(--color-text-secondary)] capitalize font-medium">
+            Status: {approval.status}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -77,7 +95,15 @@ function Stat({ label, value, sublabel }: { label: string; value: string; sublab
 
 export function ApprovalsPage() {
   const { merchant } = useMerchant();
-  const { data, isLoading, isError } = useApprovals(merchant?.id, "pending");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const { data, isLoading, isError } = useApprovals(merchant?.id, filterStatus);
+
+  const TABS = [
+    { id: "all", label: "All Requests" },
+    { id: "pending", label: "Pending Sign-off" },
+    { id: "approved", label: "Approved" },
+    { id: "rejected", label: "Rejected" },
+  ];
 
   return (
     <div>
@@ -86,6 +112,23 @@ export function ApprovalsPage() {
         Financial actions the agent has proposed, gated by your policies and permissions. Nothing here has touched
         Razorpay yet — approving is what authorizes execution.
       </p>
+
+      {/* Status Filter Tabs */}
+      <div className="mt-6 flex gap-2 border-b border-[var(--color-border)] pb-3">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setFilterStatus(tab.id)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              filterStatus === tab.id
+                ? "bg-[var(--color-accent)] text-[#1a1200]"
+                : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border)]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       <div className="mt-6 space-y-4">
         {isLoading ? (
@@ -98,7 +141,7 @@ export function ApprovalsPage() {
           data.items.map((a) => <ApprovalCard key={a.id} approval={a} />)
         ) : (
           <EmptyState
-            title="Nothing waiting for approval"
+            title="No approval records found"
             description="When the agent proposes a discount, payment link, or order that requires sign-off, it will show up here."
           />
         )}
