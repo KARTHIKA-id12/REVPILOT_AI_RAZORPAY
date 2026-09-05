@@ -55,7 +55,7 @@ def check_campaign_budget(db: Session, merchant_id: uuid.UUID, budget_amount: fl
 
 
 def check_daily_campaign_count(db: Session, merchant_id: uuid.UUID, campaigns_created_today: int) -> PolicyResult:
-    max_daily = _get_policy_value(db, merchant_id, "MAX_DAILY_CAMPAIGNS", 10)
+    max_daily = _get_policy_value(db, merchant_id, "MAX_DAILY_CAMPAIGNS", 50)
     if campaigns_created_today >= max_daily:
         return PolicyResult(False, [f"Daily campaign limit reached ({campaigns_created_today}/{max_daily})."])
     return PolicyResult(True)

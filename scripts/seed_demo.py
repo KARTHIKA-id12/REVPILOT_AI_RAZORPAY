@@ -199,7 +199,7 @@ def main(reset: bool = True) -> None:
         policy_defaults = {
             "MAX_DISCOUNT_PERCENT": 15,
             "MAX_CAMPAIGN_BUDGET": 5000,
-            "MAX_DAILY_CAMPAIGNS": 10,
+            "MAX_DAILY_CAMPAIGNS": 50,
             "MAX_SINGLE_TRANSACTION": 10000,
             "REQUIRE_APPROVAL_FOR_FINANCIAL_ACTIONS": True,
             "NO_OUT_OF_STOCK_PRODUCTS": True,
